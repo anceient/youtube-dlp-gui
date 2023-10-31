@@ -3,7 +3,7 @@ This is my own take on a gui for yt-dlp using dear pygui<br>
 This includes both a version of yt-dlp and ffmpeg so neither have to be downloaded<br>
 yt-dlp is auto updated when a video is downloaded<br>
 
-note if your running/compiling from source you will need to download a version of ffmpeg.exe since i cannot put it on github
+note if your running/compiling from source you will need to unzip ffmpeg.7z in the exe folder since its too large to to put on github uncompressed
 
 # Options
 - Rate limit

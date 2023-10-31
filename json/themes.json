@@ -1,0 +1,43 @@
+{
+	"default":"red",
+    "red": {
+        "background":[25,25,25],
+        "text_color1":[255,0,0],
+        "button":[35,35,35],
+        "buttonHover":[255,0,0],
+        "buttonActive":[150,0,0],
+		"buttonDisabled":[30,30,30],
+		"buttonDisabledText":[100,0,0],
+        "checkMarkColor":[255,0,0],
+        "checkBoxBorder":[100,0,0],
+        "disabledBorder":[0,0,0],
+        "disabledText":[155,155,155]
+    },
+    "gold":{
+        "background":[25,25,25],
+        "text_color1":[199,185,76],
+        "button":[35,35,35],
+        "buttonHover":[189,175,72],
+        "buttonActive":[126,116,48],
+		"buttonDisabled":[30,30,30],
+		"buttonDisabledText":[126,116,48],
+        "checkMarkColor":[189,175,72],
+        "checkBoxBorder":[126,116,48],
+        "disabledBorder":[0,0,0],
+        "disabledText":[155,155,155]
+    },
+
+    "worse":{
+        "background":[255,255,255],
+        "text_color1":[255,255,255],
+        "button":[255,255,255],
+        "buttonHover":[255,255,255],
+        "buttonActive":[255,255,255],
+		"buttonDisabled":[255,255,255],
+		"buttonDisabledText":[255,255,255],
+        "checkMarkColor":[255,255,255],
+        "checkBoxBorder":[255,255,255],
+        "disabledBorder":[255,255,255],
+        "disabledText":[255,255,255]
+    }
+}

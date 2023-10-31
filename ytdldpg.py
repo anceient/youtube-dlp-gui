@@ -1,0 +1,381 @@
+import sys
+import os
+import ctypes
+import winreg as wirg
+import json
+
+import dearpygui.dearpygui as dpg
+
+def resource_path(relative_path):
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.abspath("."), relative_path)
+
+##################################################################################################
+#=============================================Winreg=============================================#
+##################################################################################################
+
+#shit for winreg
+#Here goto the current user registry
+#soft = wirg.ConnectRegistry(None,wirg.HKEY_CURRENT_USER)
+global key
+global keys
+keys = []
+#then we create/open our folder
+soft = wirg.OpenKeyEx(wirg.HKEY_CURRENT_USER,r'SOFTWARE\\')
+key = wirg.CreateKey(soft,'retardsinc\\youtubedlgui')
+
+#then we findout howmeny values are in the folder and add the names of the values
+#to the keys table
+
+#if no values are found then we create a new value
+for i in range(10):
+    try:
+        x=wirg.EnumValue(key,i)
+        keys.append(x[0])
+        #print(i)
+    except:
+        if i == 0 or i < 2:
+            wirg.SetValueEx(key,'Default Theme',0,wirg.REG_SZ,'gold')
+            wirg.SetValueEx(key,'Tooltips',0,wirg.REG_SZ,'True')
+            keys.append('Default Theme')
+            keys.append('Tooltips')
+        break
+
+
+##################################################################################################
+#==========================================4K checker============================================#
+##################################################################################################
+
+
+is_4k_monitor = False #This varabial only exists because when windows scales up a program for a 4k monitor it fuckes up our custom menubar dragging system
+#so the fix is to just disable menubar dragging and reenable the default windows decorator(the bar at the top of a window that has the x button in it)
+#2560 1440 2k
+#3840 2160 4k
+#2149 1234 ajk
+user32 = ctypes.windll.user32
+screensize = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
+if screensize == (2194 ,1234) or screensize == (3840,2160):
+    is_4k_monitor = True
+
+dpg.create_context()
+#adding fonts
+with dpg.font_registry():
+    # first argument ids the path to the .ttf or .otf file
+    big_font = dpg.add_font(resource_path("font/lucon.ttf"), 18)
+
+##################################################################################################
+#=====================================File handleing functions===================================#
+##################################################################################################
+
+def loadfiles():
+    themepath = 'json/themes.json' if os.path.isfile('json/themes.json') else resource_path('json/themes.json')
+    if os.path.isfile('./themes.json'):
+        themepath = 'themes.json'
+    global theme
+    global theming
+    theme = open(themepath)
+    theming = json.load(theme)
+
+loadfiles()
+
+def localfilegen(sender,app_data,user_data):
+    if not os.path.isfile(user_data[0]):
+        with open(user_data[0],'w') as wfile:
+            user_data[1].seek(0)
+            wfile.write(str(user_data[1].read()))
+
+
+##################################################################################################
+#=====================================Theme functions/Defs=======================================#
+##################################################################################################
+
+current_theme = theming[wirg.QueryValueEx(key,keys[0])[0]]
+def set_theme():
+    with dpg.theme() as global_theme:
+        with dpg.theme_component(dpg.mvAll):
+            dpg.add_theme_color(dpg.mvThemeCol_FrameBg, (255, 140, 23), category=dpg.mvThemeCat_Core) #This is kinda pointless as we dont use the thing this controls
+            dpg.add_theme_style(dpg.mvStyleVar_FrameBorderSize, 1.5, category=dpg.mvThemeCat_Core)
+            dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 8, category=dpg.mvThemeCat_Core)
+            dpg.add_theme_style(dpg.mvStyleVar_FramePadding, 10, 3, category=dpg.mvThemeCat_Core)
+
+            dpg.add_theme_color(dpg.mvThemeCol_WindowBg,current_theme["background"])
+            dpg.add_theme_color(dpg.mvThemeCol_Button,current_theme["button"])
+            dpg.add_theme_color(dpg.mvThemeCol_ButtonHovered,current_theme["buttonHover"])
+            dpg.add_theme_color(dpg.mvThemeCol_ButtonActive,current_theme["buttonActive"])
+            #stuff for menu bar
+            dpg.add_theme_color(dpg.mvThemeCol_MenuBarBg,current_theme["background"])
+            dpg.add_theme_color(dpg.mvThemeCol_PopupBg,current_theme["background"])
+            dpg.add_theme_color(dpg.mvThemeCol_HeaderHovered,current_theme["buttonHover"])
+            dpg.add_theme_color(dpg.mvThemeCol_Header,current_theme["buttonActive"])
+            #stuff for sliders
+            dpg.add_theme_color(dpg.mvThemeCol_SliderGrab,current_theme["buttonActive"])
+            dpg.add_theme_color(dpg.mvThemeCol_SliderGrabActive,current_theme["buttonHover"])
+            dpg.add_theme_color(dpg.mvThemeCol_FrameBg,current_theme["button"])
+            dpg.add_theme_color(dpg.mvThemeCol_FrameBgHovered,current_theme["button"])
+            dpg.add_theme_color(dpg.mvThemeCol_FrameBgActive,current_theme["button"])
+            dpg.add_theme_style(dpg.mvStyleVar_GrabRounding,8)
+        
+        with dpg.theme_component(dpg.mvCheckbox):
+            dpg.add_theme_color(dpg.mvThemeCol_CheckMark,current_theme["checkMarkColor"])
+            dpg.add_theme_color(dpg.mvThemeCol_Border,current_theme["checkBoxBorder"])
+        
+        with dpg.theme_component(dpg.mvCheckbox,enabled_state=False):
+            dpg.add_theme_color(dpg.mvThemeCol_CheckMark,current_theme["buttonDisabledText"])
+            dpg.add_theme_color(dpg.mvThemeCol_Border,current_theme['disabledBorder'])
+            dpg.add_theme_color(dpg.mvThemeCol_Text,current_theme['disabledText'])
+        
+        with dpg.theme_component(dpg.mvRadioButton):
+            dpg.add_theme_color(dpg.mvThemeCol_Border,current_theme['checkBoxBorder'])
+            dpg.add_theme_color(dpg.mvThemeCol_CheckMark,current_theme['checkMarkColor'])
+        
+        with dpg.theme_component(dpg.mvRadioButton,enabled_state=False):
+            dpg.add_theme_color(dpg.mvThemeCol_CheckMark,current_theme["buttonDisabledText"])
+            dpg.add_theme_color(dpg.mvThemeCol_Border,current_theme['disabledBorder'])
+            dpg.add_theme_color(dpg.mvThemeCol_Text,current_theme['disabledText'])
+        
+        with dpg.theme_component(dpg.mvInputInt,enabled_state=False):
+            dpg.add_theme_color(dpg.mvThemeCol_Border,current_theme['disabledBorder'])
+            dpg.add_theme_color(dpg.mvThemeCol_BorderShadow,current_theme['disabledBorder'])
+            dpg.add_theme_color(dpg.mvThemeCol_Text,current_theme['disabledText'])
+
+        with dpg.theme_component(dpg.mvButton, enabled_state=False): # Disabled Button coloring
+            dpg.add_theme_color(dpg.mvThemeCol_Button,current_theme["buttonDisabled"])
+            dpg.add_theme_color(dpg.mvThemeCol_ButtonHovered,current_theme["buttonDisabled"])
+            dpg.add_theme_color(dpg.mvThemeCol_ButtonActive,current_theme["buttonDisabled"])
+            dpg.add_theme_color(dpg.mvThemeCol_Text,current_theme["buttonDisabledText"])
+
+        with dpg.theme_component(dpg.mvTooltip):
+            dpg.add_theme_color(dpg.mvThemeCol_Border,current_theme["text_color1"])
+            dpg.add_theme_color(dpg.mvThemeCol_Text,current_theme["text_color1"])
+            dpg.add_theme_style(dpg.mvStyleVar_WindowRounding,64)
+    dpg.bind_theme(global_theme)
+
+themetext = []
+
+def themechanger(sender,app_data,user_data):
+    global current_theme
+    current_theme = theming[user_data]
+    wirg.SetValueEx(key,keys[0],0,wirg.REG_SZ,user_data)
+    for i in themetext:
+        dpg.configure_item(i,color=current_theme['text_color1'])
+    set_theme()
+
+set_theme()
+
+with dpg.theme() as closebtn:
+    with dpg.theme_component(dpg.mvButton):
+        dpg.add_theme_style(dpg.mvStyleVar_ButtonTextAlign ,1.00,category=dpg.mvThemeCat_Core)
+        dpg.add_theme_color(dpg.mvThemeCol_Button,[0,0,0,0])
+        dpg.add_theme_color(dpg.mvThemeCol_ButtonHovered,[255,0,0,155])
+        dpg.add_theme_color(dpg.mvThemeCol_ButtonActive,[0,0,0,0])
+        dpg.add_theme_style(dpg.mvStyleVar_FrameBorderSize, 0, category=dpg.mvThemeCat_Core)
+        dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 0, category=dpg.mvThemeCat_Core)
+
+with dpg.theme() as minimizebtn:
+    with dpg.theme_component(dpg.mvButton):
+        dpg.add_theme_style(dpg.mvStyleVar_ButtonTextAlign ,1.00,category=dpg.mvThemeCat_Core)
+        dpg.add_theme_color(dpg.mvThemeCol_Button,[0,0,0,0])
+        dpg.add_theme_color(dpg.mvThemeCol_ButtonHovered,[255,255,255,155])
+        dpg.add_theme_color(dpg.mvThemeCol_ButtonActive,[0,0,0,0])
+        dpg.add_theme_style(dpg.mvStyleVar_FrameBorderSize, 0, category=dpg.mvThemeCat_Core)
+        dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 0, category=dpg.mvThemeCat_Core)
+
+
+
+##################################################################################################
+#====================================Misc/callback functions=====================================#
+##################################################################################################
+
+if not is_4k_monitor: #If is_4k_monitor is True then dont do any of this shit
+    #all this just to drag it
+    is_menu_bar_clicked = False #if you dont define the functions in this order then youd get an error when you tried to drag the window
+    #but if you just define this variable first then it does not matter
+
+    def mouse_click_callback():
+        try:
+            global is_menu_bar_clicked
+            is_menu_bar_clicked = True if dpg.get_mouse_pos(local=False)[1] < 30 else False # 30 pixels is slightly more than the height of the default menu bar 
+        except:
+            pass
+    def mouse_drag_callback(_, app_data): # functions for window draging
+        try:
+            if is_menu_bar_clicked:
+                _, drag_delta_x, drag_delta_y = app_data
+                viewport_pos_x, viewport_pos_y = dpg.get_viewport_pos()
+                new_pos_x = viewport_pos_x + drag_delta_x
+                new_pos_y = max(viewport_pos_y + drag_delta_y, 0)
+                dpg.set_viewport_pos([new_pos_x, new_pos_y])
+        except:
+            print("fuck u")
+    with dpg.handler_registry(): #function so we can drag the top of the window
+        dpg.add_mouse_click_handler(button=0, callback=mouse_click_callback)
+        dpg.add_mouse_drag_handler(button=0, threshold=0, callback=mouse_drag_callback)
+
+# This function that neither of us wrote is how we keep the custom close button aligned to the corner even when the width of the window changes
+#for the minimize button we just positioned it relitve to the close button
+def auto_align(item, alignment_type: int, x_align: float = 0.5, y_align: float = 0.5):
+    def _center_h(_s, _d, data):
+        parent = dpg.get_item_parent(data[0])
+        while dpg.get_item_info(parent)['type'] != "mvAppItemType::mvWindowAppItem":
+            parent = dpg.get_item_parent(parent)
+        parent_width = dpg.get_item_rect_size(parent)[0]
+        width = dpg.get_item_rect_size(data[0])[0]
+        new_x = (parent_width // 2 - width // 2) * data[1] * 2
+        dpg.set_item_pos(data[0], [new_x, dpg.get_item_pos(data[0])[1]])
+
+    def _center_v(_s, _d, data):
+        parent = dpg.get_item_parent(data[0])
+        while dpg.get_item_info(parent)['type'] != "mvAppItemType::mvWindowAppItem":
+            parent = dpg.get_item_parent(parent)
+        parent_width = dpg.get_item_rect_size(parent)[1]
+        height = dpg.get_item_rect_size(data[0])[1]
+        new_y = (parent_width // 2 - height // 2) * data[1] * 2
+        dpg.set_item_pos(data[0], [dpg.get_item_pos(data[0])[0], new_y])
+
+    if 0 <= alignment_type <= 2:
+        with dpg.item_handler_registry():
+            if alignment_type == 0:
+                # horizontal only alignment
+                dpg.add_item_visible_handler(callback=_center_h, user_data=[item, x_align])
+            elif alignment_type == 1:
+                # vertical only alignment
+                dpg.add_item_visible_handler(callback=_center_v, user_data=[item, y_align])
+            elif alignment_type == 2:
+                # both horizontal and vertical alignment
+                dpg.add_item_visible_handler(callback=_center_h, user_data=[item, x_align])
+                dpg.add_item_visible_handler(callback=_center_v, user_data=[item, y_align])
+
+        dpg.bind_item_handler_registry(item, dpg.last_container())
+
+tips = []
+def toggletooltips():
+    var = dpg.get_value('enabletipcb')
+    wirg.SetValueEx(key,keys[1],0,wirg.REG_SZ,str(var))
+    for i in tips:
+        dpg.configure_item(i,show=var)
+
+def modetog(sender):
+    if dpg.get_value(sender) == 'Full video':
+        dpg.configure_item('thumbnail',enabled=False)
+        dpg.set_value('format','mp4')
+    else:
+        dpg.configure_item('thumbnail',enabled=True)
+        dpg.set_value('format','mp3')
+
+def download():
+    if dpg.get_value('modesel') == 'Full video':
+        args = f'-r{str(dpg.get_value("ratelimit"))}m -f bestvideo+bestaudio --merge-output-format {dpg.get_value("format")} -o "{dpg.get_value("dllocation")}%(title)s-%(id)s.%(ext)s" --ffmpeg-location "{resource_path("exe/ffmpeg.exe")}"'
+        if dpg.get_value('isplaylist') == True:
+            if dpg.get_value('plpoint2') == 0:
+                args += f' --playlist-items {dpg.get_value("plpoint1")}:'
+            else:
+                args += f' --playlist-items {dpg.get_value("plpoint1")}:{dpg.get_value("plpoint2")}'
+        if not dpg.get_value('cookies') == '':
+            args += f' --cookies {dpg.get_value("cookies")}'
+        args += f" {dpg.get_value('url')}"
+    else:
+        args = f'-r{str(dpg.get_value("ratelimit"))}m -x --audio-format {dpg.get_value("format")} -o "{dpg.get_value("dllocation")}%(title)s-%(id)s.%(ext)s" --ffmpeg-location "{resource_path("exe/ffmpeg.exe")}"'
+        if dpg.get_value('thumbnail') == True:
+            args += f' --embed-thumbnail'
+        if dpg.get_value('isplaylist') == True:
+            if dpg.get_value('plpoint2') == 0:
+                args += f' --playlist-items {dpg.get_value("plpoint1")}:'
+            else:
+                args += f' --playlist-items {dpg.get_value("plpoint1")}:{dpg.get_value("plpoint2")}'
+        args += f' {dpg.get_value("url")}'
+
+    os.system(resource_path('exe/yt-dlp.exe')+' --update')
+    os.spawnl(os.P_NOWAIT,resource_path('exe/yt-dlp.exe'),args)
+
+def pltog(sender):
+    if dpg.get_value(sender) == True:
+        dpg.configure_item('plpoint1',enabled=True)
+        dpg.configure_item('plpoint2',enabled=True)
+    else:
+        dpg.configure_item('plpoint1',enabled=False)
+        dpg.configure_item('plpoint2',enabled=False)
+
+
+##################################################################################################
+#===========================================Main window==========================================#
+##################################################################################################
+
+with dpg.window(tag="primary"):
+    mtext = dpg.add_text("Youtube-dl downloader",color=current_theme['text_color1'])
+    dpg.bind_item_font(mtext,big_font)
+    themetext.append(mtext)
+
+    dpg.add_radio_button(['Full video','Audio only'],tag='modesel',callback=modetog,default_value='Full video')
+
+    dpg.add_input_int(label='Rate limit in MB',tag='ratelimit',default_value=35,width=100)
+    dpg.add_input_text(label='Output format',tag='format',default_value='mp4',width=50)
+    dpg.add_input_text(label='Url/videoID',tag='url',default_value='dQw4w9WgXcQ')
+    dpg.add_input_text(label='Download location',default_value='.\\',tag='dllocation')
+    with dpg.tooltip('dllocation') as dllocationtip:
+        tips.append(dllocationtip)
+        dpg.add_text('This is where the downloaded videos will be placed.\nDefault: ".\\" this means that they will be placed\nnext to the exe.')
+    dpg.add_input_text(label='Cookies.txt file location *optional*',tag='cookies',width=250)
+    with dpg.tooltip('cookies') as cookiestip:
+        tips.append(cookiestip)
+        dpg.add_text('You only need this if youtube says you need to be loged in\nInorder to access the video otherwise you will be fine')
+    
+    dpg.add_checkbox(label='Embed thumbnail',tag='thumbnail',enabled=False)
+    with dpg.tooltip('thumbnail') as thumbnailtip:
+        tips.append(thumbnailtip)
+        dpg.add_text('Audio only when enabled the thumbnail will be downloaded\nand the icon of the audio file will be set to that.')
+    
+    dpg.add_checkbox(label='Playlist?',tag='isplaylist',callback=pltog)
+    dpg.add_input_int(label='Starting point for the playlist',min_value=1,default_value=1,tag='plpoint1',enabled=False,width=100)
+    dpg.add_input_int(label='Ending point for the playlist',min_value=0,default_value=0,tag='plpoint2',enabled=False,width=100)
+    with dpg.tooltip('plpoint2') as plpoint2tip:
+        tips.append(plpoint2tip)
+        dpg.add_text('leave at 0 if you want to download all videos\nFrom the starting point untill the end')
+    
+    dpg.add_separator()
+    dpg.add_button(label='Download',tag='dlbutton',callback=download)
+    
+    
+
+    with dpg.menu_bar():
+        with dpg.menu(label="Theme"):#Grab the names of all the themes if themes.json and add them to the options
+            for i in theming:
+                if not i == 'default':
+                    dpg.add_menu_item(label=f"{i}", callback=themechanger,user_data=f"{i}")
+        
+        with dpg.menu(label='extra'):
+            o1 = dpg.add_menu_item(label="create themes.json file",callback=localfilegen,user_data=['./themes.json',theme])
+            with dpg.tooltip(o1) as themetip:
+                tips.append(themetip)
+                dpg.add_text('Generate a jsonfile next to the exe for user modification\nThis json file will be used on startup\nInsted of the default file')
+
+            dpg.add_checkbox(label="Enable tooltips",default_value=True if wirg.QueryValueEx(key,keys[1])[0] == 'True' else False,tag='enabletipcb',callback=toggletooltips)
+
+        dpg.add_button(label='X',tag='closebtn',callback=lambda: os._exit(0))
+        dpg.add_button(label='-',tag='minbtn',callback=lambda: dpg.minimize_viewport())
+        dpg.bind_item_font('minbtn',big_font)
+        dpg.bind_item_theme('closebtn',closebtn)
+        dpg.bind_item_theme('minbtn',minimizebtn)
+        auto_align('closebtn', 0, x_align=1, y_align=0.1)
+        #auto_align(item tag,int alignment mode 0 1 or 2, x_align=0 to 1, y_align=0 to 1)
+
+#funfact 
+#lets say you do test=5
+#but you want it to = 10 while test2 = True
+#you can just do test = 5 if test2 == False else 10
+dpg.create_viewport(title='viewport', width=600, height=400, decorated=False if not is_4k_monitor else True)
+dpg.set_primary_window("primary", True)
+dpg.setup_dearpygui()
+dpg.show_viewport()
+
+while dpg.is_dearpygui_running():
+    if is_4k_monitor == False:
+        #if the window is resized so that the close button is not visible it wont get moved so here we check if that happened and if so move
+        #both the close and minimize buttons back into visible space
+        cx, _ = dpg.get_item_pos('closebtn')
+        if cx > dpg.get_viewport_width():
+            dpg.set_item_pos('closebtn',[0,0])
+            dpg.set_item_pos('minbtn',[0,0])
+        dpg.set_item_pos('minbtn',[cx-26,0])
+    dpg.render_dearpygui_frame()
+dpg.destroy_context()

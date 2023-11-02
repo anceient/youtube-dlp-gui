@@ -4,6 +4,8 @@ import ctypes
 import winreg as wirg
 import json
 import subprocess
+import threading
+import time
 
 import dearpygui.dearpygui as dpg
 
@@ -36,13 +38,14 @@ for i in range(10):
         keys.append(x[0])
         #print(i)
     except:
-        if i == 0 or i < 2:
+        if i == 0 or i < 3:
             wirg.SetValueEx(key,'Default Theme',0,wirg.REG_SZ,'gold')
             wirg.SetValueEx(key,'Tooltips',0,wirg.REG_SZ,'True')
+            wirg.SetValueEx(key,'dlpath',0,wirg.REG_SZ,'.\\')
             keys.append('Default Theme')
             keys.append('Tooltips')
+            keys.append('dlpath')
         break
-
 
 ##################################################################################################
 #==========================================4K checker============================================#
@@ -101,6 +104,7 @@ def set_theme():
             dpg.add_theme_style(dpg.mvStyleVar_FramePadding, 10, 3, category=dpg.mvThemeCat_Core)
 
             dpg.add_theme_color(dpg.mvThemeCol_WindowBg,current_theme["background"])
+            dpg.add_theme_color(dpg.mvThemeCol_TitleBgActive,current_theme["background"])
             dpg.add_theme_color(dpg.mvThemeCol_Button,current_theme["button"])
             dpg.add_theme_color(dpg.mvThemeCol_ButtonHovered,current_theme["buttonHover"])
             dpg.add_theme_color(dpg.mvThemeCol_ButtonActive,current_theme["buttonActive"])
@@ -266,17 +270,18 @@ def modetog(sender):
 
 global lastline
 
-def add_long_text(inp):
+def add_long_text(inp,col=[255,255,255]):
     global lastline
     if lastline and '[download]' in dpg.get_value(lastline) and '[download]' in inp and not '[download] Destination:' in dpg.get_value(lastline) and not '[download] Destination:' in inp:
         dpg.set_value(lastline,inp)
         dpg.configure_item(lastline,color=current_theme['text_color1'])
     else:
         lastline = dpg.add_text(inp, parent="conwin")
-        dpg.configure_item(lastline,color=[255,255,255])
+        dpg.configure_item(lastline,color=col)
         dpg.set_y_scroll("conwin", dpg.get_y_scroll_max("conwin")+1000)
 
 def download():
+    dpg.configure_item('dlbutton',enabled=False)
     if dpg.get_value('modesel') == 'Full video':
         args = f' -r{str(dpg.get_value("ratelimit"))}m -f bestvideo+bestaudio --merge-output-format {dpg.get_value("format")} -o "{dpg.get_value("dllocation")}%(title)s-%(id)s.%(ext)s" --ffmpeg-location "{resource_path("exe/ffmpeg.exe")}"'
         if dpg.get_value('isplaylist') == True:
@@ -298,12 +303,12 @@ def download():
                 args += f' --playlist-items {dpg.get_value("plpoint1")}:{dpg.get_value("plpoint2")}'
         args += f' {dpg.get_value("url")}'
 
-    #os.system(resource_path('exe/yt-dlp.exe')+' --update')
-    #os.spawnl(os.P_NOWAIT,resource_path('exe/yt-dlp.exe'),args)
     with subprocess.Popen(resource_path('.\\exe\\yt-dlp.exe')+args,stdout=subprocess.PIPE,bufsize=1,universal_newlines=True,creationflags=subprocess.CREATE_NO_WINDOW) as process:
         for line in process.stdout:
             if len(line) > 1:
                 add_long_text(line)
+    dpg.configure_item('dlbutton',enabled=True)
+    add_long_text('All operations complete.',[0,255,0])
 
 def pltog(sender):
     if dpg.get_value(sender) == True:
@@ -313,12 +318,47 @@ def pltog(sender):
         dpg.configure_item('plpoint1',enabled=False)
         dpg.configure_item('plpoint2',enabled=False)
 
+def pathfixer(sender):
+    var = dpg.get_value(sender)
+    if var[-1] != '/' or var[-1] != '\\':
+        dpg.set_value(sender,var+'\\')
+        wirg.SetValueEx(key,keys[2],0,wirg.REG_SZ,var+'\\')
+    else:
+        wirg.SetValueEx(key,keys[2],0,wirg.REG_SZ,var)
+
+def wavEMBEDblock(sender):
+    if dpg.get_value(sender) == 'wav' and dpg.get_value('modesel') == 'Audio only':
+        dpg.configure_item('thumbnail',enabled=False)
+        dpg.set_value('thumbnail',False)
+    elif dpg.get_value('modesel') == 'Audio only':
+        dpg.configure_item('thumbnail',enabled=True)
+
+def fib_confirm(_,app_data):
+    var = app_data['current_path']
+    if not len(var) > 1:
+        var = '.\\'
+    elif var[-1] != '\\' or var[-1] != '/':
+        var+='\\'
+    dpg.set_value('dllocation',var)
+    wirg.SetValueEx(key,keys[2],0,wirg.REG_SZ,var)
+
+def fib_cancel():
+    pass
+
+def fib_confirm2(_,app_data):
+    dpg.set_value('cookies',app_data['file_path_name'])
 
 ##################################################################################################
 #===========================================Main window==========================================#
 ##################################################################################################
 
-with dpg.window(tag="primary",width=700, height=600,no_move=True,no_resize=False,no_title_bar=True,pos=[0,0]):
+with dpg.window(tag="primary",width=700, height=600,no_move=True,no_resize=False,no_title_bar=True,pos=[0,0],max_size=[3000,3000]):
+    #download directory selector
+    dpg.add_file_dialog(directory_selector=True,show=False,callback=fib_confirm,tag='file_browser',cancel_callback=fib_cancel,width=600,height=500,modal=True,default_path=wirg.QueryValueEx(key,keys[2])[0])
+    #cookies file selector
+    with dpg.file_dialog(directory_selector=False,show=False,callback=fib_confirm2,tag='file_browser2',cancel_callback=fib_cancel,width=600,height=500,modal=True):
+        dpg.add_file_extension('.txt')
+    
     mtext = dpg.add_text("Youtube-dl downloader",color=current_theme['text_color1'])
     lastline = mtext#This is only here so add_long_text dosent error on its first run
     dpg.bind_item_font(mtext,big_font)
@@ -327,23 +367,43 @@ with dpg.window(tag="primary",width=700, height=600,no_move=True,no_resize=False
     dpg.add_radio_button(['Full video','Audio only'],tag='modesel',callback=modetog,default_value='Full video')
 
     dpg.add_input_int(label='Rate limit in MB',tag='ratelimit',default_value=35,width=100)
-    dpg.add_input_text(label='Output format',tag='format',default_value='mp4',width=50)
+    dpg.add_input_text(label='Output format',tag='format',default_value='mp4',width=50,callback=wavEMBEDblock)
     dpg.add_input_text(label='Url/videoID',tag='url',default_value='dQw4w9WgXcQ')
-    dpg.add_input_text(label='Download location',default_value='.\\',tag='dllocation')
+    with dpg.group(horizontal=True):
+        dpg.add_input_text(default_value=wirg.QueryValueEx(key,keys[2])[0],tag='dllocation',callback=pathfixer,width=402)
+        dpg.add_button(label='...',callback=lambda: dpg.show_item('file_browser'),width=40,tag='file_button')
+        dpg.add_text('Download location')
+
     with dpg.tooltip('dllocation') as dllocationtip:
         tips.append(dllocationtip)
         dpg.add_text('This is where the downloaded videos will be placed.\nDefault: ".\\" this means that they will be placed\nnext to the exe.')
-    dpg.add_input_text(label='Cookies.txt file location *optional*',tag='cookies',width=250)
+    
+    with dpg.tooltip('file_button') as file_buttontip:
+        tips.append(file_buttontip)
+        dpg.add_text('File browser')
+
+    with dpg.group(horizontal=True):
+        dpg.add_input_text(tag='cookies',width=250)
+        dpg.add_button(label='...',callback=lambda: dpg.show_item('file_browser2'),width=40,tag='file_button2')
+        dpg.add_text('Cookies.txt file location *optional*')
+
     with dpg.tooltip('cookies') as cookiestip:
         tips.append(cookiestip)
         dpg.add_text('You only need this if youtube says you need to be loged in\nInorder to access the video otherwise you will be fine')
     
+    with dpg.tooltip('file_button2') as file_buttontip2:
+        tips.append(file_buttontip2)
+        dpg.add_text('File browser')
+
     dpg.add_checkbox(label='Embed thumbnail',tag='thumbnail',enabled=False)
     with dpg.tooltip('thumbnail') as thumbnailtip:
         tips.append(thumbnailtip)
         dpg.add_text('Audio only when enabled the thumbnail will be downloaded\nand the icon of the audio file will be set to that.\nNote this can occasionally hang for a few seconds at the end.')
     
     dpg.add_checkbox(label='Playlist?',tag='isplaylist',callback=pltog)
+    with dpg.tooltip('isplaylist') as playlisttip:
+        tips.append(playlisttip)
+        dpg.add_text('You only need to enable this if you want to\ndefine a custom start/stop for your playlist\nother wise it will just go from 1 to end')
     dpg.add_input_int(label='Starting point for the playlist',min_value=1,default_value=1,tag='plpoint1',enabled=False,width=100)
     dpg.add_input_int(label='Ending point for the playlist',min_value=0,default_value=0,tag='plpoint2',enabled=False,width=100)
     with dpg.tooltip('plpoint2') as plpoint2tip:
@@ -351,7 +411,7 @@ with dpg.window(tag="primary",width=700, height=600,no_move=True,no_resize=False
         dpg.add_text('leave at 0 if you want to download all videos\nFrom the starting point untill the end')
     
     dpg.add_separator()
-    dpg.add_button(label='Download',tag='dlbutton',callback=download)
+    dpg.add_button(label='Download',tag='dlbutton',callback=lambda: threading.Thread(target=download).start())
     dpg.add_separator()
     dpg.add_text('Console',tag='consoleheader')
     dpg.bind_item_font('consoleheader',big_font)
@@ -373,21 +433,22 @@ with dpg.window(tag="primary",width=700, height=600,no_move=True,no_resize=False
                 dpg.add_text('Generate a jsonfile next to the exe for user modification\nThis json file will be used on startup\nInsted of the default file')
 
             dpg.add_checkbox(label="Enable tooltips",default_value=True if wirg.QueryValueEx(key,keys[1])[0] == 'True' else False,tag='enabletipcb',callback=toggletooltips)
-
-        dpg.add_button(label='X',tag='closebtn',callback=lambda: os._exit(0))
-        dpg.add_button(label='-',tag='minbtn',callback=lambda: dpg.minimize_viewport())
-        dpg.bind_item_font('minbtn',big_font)
-        dpg.bind_item_theme('closebtn',closebtn)
-        dpg.bind_item_theme('minbtn',minimizebtn)
-        auto_align('closebtn', 0, x_align=1, y_align=0.1)
-        #auto_align(item tag,int alignment mode 0 1 or 2, x_align=0 to 1, y_align=0 to 1)
+        if not is_4k_monitor:
+            dpg.add_button(label='X',tag='closebtn',callback=lambda: os._exit(0))
+            dpg.add_button(label='-',tag='minbtn',callback=lambda: dpg.minimize_viewport())
+            dpg.bind_item_font('minbtn',big_font)
+            dpg.bind_item_theme('closebtn',closebtn)
+            dpg.bind_item_theme('minbtn',minimizebtn)
+            auto_align('closebtn', 0, x_align=1, y_align=0.1)
+            #auto_align(item tag,int alignment mode 0 1 or 2, x_align=0 to 1, y_align=0 to 1)
 
 #funfact 
 #lets say you do test=5
 #but you want it to = 10 while test2 = True
 #you can just do test = 5 if test2 == False else 10
 dpg.create_viewport(title='viewport', decorated=False if not is_4k_monitor else True)
-#dpg.set_primary_window("primary", True)
+if is_4k_monitor == True:
+    dpg.set_primary_window("primary", True)
 dpg.setup_dearpygui()
 dpg.show_viewport()
 
@@ -400,9 +461,9 @@ while dpg.is_dearpygui_running():
             dpg.set_item_pos('closebtn',[0,0])
             dpg.set_item_pos('minbtn',[0,0])
         dpg.set_item_pos('minbtn',[cx-26,0])
-    w,h = dpg.get_item_width('primary'),dpg.get_item_height('primary')
-    dpg.set_viewport_width(w)
-    dpg.set_viewport_height(h)
-    dpg.set_item_pos('primary',[0,0])
+        w,h = dpg.get_item_width('primary'),dpg.get_item_height('primary')
+        dpg.set_viewport_width(w)
+        dpg.set_viewport_height(h)
+        dpg.set_item_pos('primary',[0,0])
     dpg.render_dearpygui_frame()
 dpg.destroy_context()

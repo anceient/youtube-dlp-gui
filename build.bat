@@ -62,7 +62,7 @@ GOTO VEnd
 cls
 ECHO Please wait while python creates the enviroment this may take a moment...
 mkdir .\venv
-python -m venv ./venv
+py -m venv ./venv
 ECHO Finished
 GOTO End
 

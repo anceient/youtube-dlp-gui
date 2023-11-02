@@ -25,7 +25,7 @@ IF ERRORLEVEL 1 GOTO B
 
 :B
 cls
-pyinstaller --add-data "json/*.json;json" --add-data "font/*.ttf;font" --add-data "icon/*.ico;icon" --add-data "exe/*.exe;exe" --onefile --noconfirm -i "icon/icon.ico" ytdldpg.py
+pyinstaller --add-data "json/*.json;json" --add-data "font/*.ttf;font" --add-data "icon/*.ico;icon" --add-data "exe/*.exe;exe" --noconsole --onefile --noconfirm -i "icon/icon.ico" ytdldpg.py
 GOTO End
 
 :Ir
@@ -36,13 +36,13 @@ GOTO End
 :Rb
 cls
 pip install -r requirements.txt
-pyinstaller --add-data "json/*.json;json" --add-data "font/*.ttf;font" --add-data "icon/*.ico;icon" --add-data "exe/*.exe;exe" --onefile --noconfirm -i "icon/icon.ico" ytdldpg.py
+pyinstaller --add-data "json/*.json;json" --add-data "font/*.ttf;font" --add-data "icon/*.ico;icon" --add-data "exe/*.exe;exe" --noconsole --onefile --noconfirm -i "icon/icon.ico" ytdldpg.py
 GOTO End
 
 :Vb
 cls
 call ./venv/Scripts/activate.bat
-pyinstaller --add-data "json/*.json;json" --add-data "font/*.ttf;font" --add-data "icon/*.ico;icon" --add-data "exe/*.exe;exe" --onefile --noconfirm -i "icon/icon.ico" ytdldpg.py
+pyinstaller --add-data "json/*.json;json" --add-data "font/*.ttf;font" --add-data "icon/*.ico;icon" --add-data "exe/*.exe;exe" --noconsole --onefile --noconfirm -i "icon/icon.ico" ytdldpg.py
 GOTO VEnd
 
 :Vir
@@ -55,7 +55,7 @@ GOTO VEnd
 cls
 call ./venv/Scripts/activate.bat
 pip install -r requirements.txt
-pyinstaller --add-data "json/*.json;json" --add-data "font/*.ttf;font" --add-data "icon/*.ico;icon" --add-data "exe/*.exe;exe" --onefile --noconfirm -i "icon/icon.ico" ytdldpg.py
+pyinstaller --add-data "json/*.json;json" --add-data "font/*.ttf;font" --add-data "icon/*.ico;icon" --add-data "exe/*.exe;exe" --noconsole --onefile --noconfirm -i "icon/icon.ico" ytdldpg.py
 GOTO VEnd
 
 :Vsu

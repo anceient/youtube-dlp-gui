@@ -3,6 +3,7 @@ import os
 import ctypes
 import winreg as wirg
 import json
+import subprocess
 
 import dearpygui.dearpygui as dpg
 
@@ -263,9 +264,21 @@ def modetog(sender):
         dpg.configure_item('thumbnail',enabled=True)
         dpg.set_value('format','mp3')
 
+global lastline
+
+def add_long_text(inp):
+    global lastline
+    if lastline and '[download]' in dpg.get_value(lastline) and '[download]' in inp and not '[download] Destination:' in dpg.get_value(lastline) and not '[download] Destination:' in inp:
+        dpg.set_value(lastline,inp)
+        dpg.configure_item(lastline,color=current_theme['text_color1'])
+    else:
+        lastline = dpg.add_text(inp, parent="conwin")
+        dpg.configure_item(lastline,color=[255,255,255])
+        dpg.set_y_scroll("conwin", dpg.get_y_scroll_max("conwin")+1000)
+
 def download():
     if dpg.get_value('modesel') == 'Full video':
-        args = f'-r{str(dpg.get_value("ratelimit"))}m -f bestvideo+bestaudio --merge-output-format {dpg.get_value("format")} -o "{dpg.get_value("dllocation")}%(title)s-%(id)s.%(ext)s" --ffmpeg-location "{resource_path("exe/ffmpeg.exe")}"'
+        args = f' -r{str(dpg.get_value("ratelimit"))}m -f bestvideo+bestaudio --merge-output-format {dpg.get_value("format")} -o "{dpg.get_value("dllocation")}%(title)s-%(id)s.%(ext)s" --ffmpeg-location "{resource_path("exe/ffmpeg.exe")}"'
         if dpg.get_value('isplaylist') == True:
             if dpg.get_value('plpoint2') == 0:
                 args += f' --playlist-items {dpg.get_value("plpoint1")}:'
@@ -275,7 +288,7 @@ def download():
             args += f' --cookies {dpg.get_value("cookies")}'
         args += f" {dpg.get_value('url')}"
     else:
-        args = f'-r{str(dpg.get_value("ratelimit"))}m -x --audio-format {dpg.get_value("format")} -o "{dpg.get_value("dllocation")}%(title)s-%(id)s.%(ext)s" --ffmpeg-location "{resource_path("exe/ffmpeg.exe")}"'
+        args = f' -r{str(dpg.get_value("ratelimit"))}m -x --audio-format {dpg.get_value("format")} -o "{dpg.get_value("dllocation")}%(title)s-%(id)s.%(ext)s" --ffmpeg-location "{resource_path("exe/ffmpeg.exe")}"'
         if dpg.get_value('thumbnail') == True:
             args += f' --embed-thumbnail'
         if dpg.get_value('isplaylist') == True:
@@ -285,8 +298,12 @@ def download():
                 args += f' --playlist-items {dpg.get_value("plpoint1")}:{dpg.get_value("plpoint2")}'
         args += f' {dpg.get_value("url")}'
 
-    os.system(resource_path('exe/yt-dlp.exe')+' --update')
-    os.spawnl(os.P_NOWAIT,resource_path('exe/yt-dlp.exe'),args)
+    #os.system(resource_path('exe/yt-dlp.exe')+' --update')
+    #os.spawnl(os.P_NOWAIT,resource_path('exe/yt-dlp.exe'),args)
+    with subprocess.Popen(resource_path('.\\exe\\yt-dlp.exe')+args,stdout=subprocess.PIPE,bufsize=1,universal_newlines=True,creationflags=subprocess.CREATE_NO_WINDOW) as process:
+        for line in process.stdout:
+            if len(line) > 1:
+                add_long_text(line)
 
 def pltog(sender):
     if dpg.get_value(sender) == True:
@@ -301,8 +318,9 @@ def pltog(sender):
 #===========================================Main window==========================================#
 ##################################################################################################
 
-with dpg.window(tag="primary"):
+with dpg.window(tag="primary",width=700, height=600,no_move=True,no_resize=False,no_title_bar=True,pos=[0,0]):
     mtext = dpg.add_text("Youtube-dl downloader",color=current_theme['text_color1'])
+    lastline = mtext#This is only here so add_long_text dosent error on its first run
     dpg.bind_item_font(mtext,big_font)
     themetext.append(mtext)
 
@@ -323,7 +341,7 @@ with dpg.window(tag="primary"):
     dpg.add_checkbox(label='Embed thumbnail',tag='thumbnail',enabled=False)
     with dpg.tooltip('thumbnail') as thumbnailtip:
         tips.append(thumbnailtip)
-        dpg.add_text('Audio only when enabled the thumbnail will be downloaded\nand the icon of the audio file will be set to that.')
+        dpg.add_text('Audio only when enabled the thumbnail will be downloaded\nand the icon of the audio file will be set to that.\nNote this can occasionally hang for a few seconds at the end.')
     
     dpg.add_checkbox(label='Playlist?',tag='isplaylist',callback=pltog)
     dpg.add_input_int(label='Starting point for the playlist',min_value=1,default_value=1,tag='plpoint1',enabled=False,width=100)
@@ -334,6 +352,11 @@ with dpg.window(tag="primary"):
     
     dpg.add_separator()
     dpg.add_button(label='Download',tag='dlbutton',callback=download)
+    dpg.add_separator()
+    dpg.add_text('Console',tag='consoleheader')
+    dpg.bind_item_font('consoleheader',big_font)
+    with dpg.child_window(label='Console',tag='conwin',autosize_x=True,autosize_y=True):
+        pass
     
     
 
@@ -363,8 +386,8 @@ with dpg.window(tag="primary"):
 #lets say you do test=5
 #but you want it to = 10 while test2 = True
 #you can just do test = 5 if test2 == False else 10
-dpg.create_viewport(title='viewport', width=600, height=400, decorated=False if not is_4k_monitor else True)
-dpg.set_primary_window("primary", True)
+dpg.create_viewport(title='viewport', decorated=False if not is_4k_monitor else True)
+#dpg.set_primary_window("primary", True)
 dpg.setup_dearpygui()
 dpg.show_viewport()
 
@@ -377,5 +400,9 @@ while dpg.is_dearpygui_running():
             dpg.set_item_pos('closebtn',[0,0])
             dpg.set_item_pos('minbtn',[0,0])
         dpg.set_item_pos('minbtn',[cx-26,0])
+    w,h = dpg.get_item_width('primary'),dpg.get_item_height('primary')
+    dpg.set_viewport_width(w)
+    dpg.set_viewport_height(h)
+    dpg.set_item_pos('primary',[0,0])
     dpg.render_dearpygui_frame()
 dpg.destroy_context()

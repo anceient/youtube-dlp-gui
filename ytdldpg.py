@@ -433,7 +433,7 @@ with dpg.window(tag="primary",width=700, height=600,no_move=True,no_resize=False
                 dpg.add_text('Generate a jsonfile next to the exe for user modification\nThis json file will be used on startup\nInsted of the default file')
 
             dpg.add_checkbox(label="Enable tooltips",default_value=True if wirg.QueryValueEx(key,keys[1])[0] == 'True' else False,tag='enabletipcb',callback=toggletooltips)
-        if not is_4k_monitor:
+        if is_4k_monitor == False:
             dpg.add_button(label='X',tag='closebtn',callback=lambda: os._exit(0))
             dpg.add_button(label='-',tag='minbtn',callback=lambda: dpg.minimize_viewport())
             dpg.bind_item_font('minbtn',big_font)
@@ -446,7 +446,7 @@ with dpg.window(tag="primary",width=700, height=600,no_move=True,no_resize=False
 #lets say you do test=5
 #but you want it to = 10 while test2 = True
 #you can just do test = 5 if test2 == False else 10
-dpg.create_viewport(title='viewport', decorated=False if not is_4k_monitor else True)
+dpg.create_viewport(title='Youtube-dlp gui', decorated=False if not is_4k_monitor else True,large_icon=resource_path('icon/icon.ico'))
 if is_4k_monitor == True:
     dpg.set_primary_window("primary", True)
 dpg.setup_dearpygui()

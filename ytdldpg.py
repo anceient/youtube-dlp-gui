@@ -5,7 +5,6 @@ import winreg as wirg
 import json
 import subprocess
 import threading
-import time
 
 import dearpygui.dearpygui as dpg
 

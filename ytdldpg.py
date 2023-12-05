@@ -55,7 +55,7 @@ is_4k_monitor = False #This varabial only exists because when windows scales up 
 #so the fix is to just disable menubar dragging and reenable the default windows decorator(the bar at the top of a window that has the x button in it)
 #2560 1440 2k
 #3840 2160 4k
-#2149 1234 ajk
+#2149 1234 huh?k
 user32 = ctypes.windll.user32
 screensize = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
 if screensize == (2194 ,1234) or screensize == (3840,2160):
@@ -269,15 +269,15 @@ def modetog(sender):
 
 global lastline
 
-def add_long_text(inp,col=[255,255,255]):
+def print_console(inp,console_window='conwin',color=[255,255,255]):
     global lastline
     if lastline and '[download]' in dpg.get_value(lastline) and '[download]' in inp and not '[download] Destination:' in dpg.get_value(lastline) and not '[download] Destination:' in inp:
         dpg.set_value(lastline,inp)
         dpg.configure_item(lastline,color=current_theme['text_color1'])
     else:
-        lastline = dpg.add_text(inp, parent="conwin")
-        dpg.configure_item(lastline,color=col)
-        dpg.set_y_scroll("conwin", dpg.get_y_scroll_max("conwin")+1000)
+        lastline = dpg.add_text(inp, parent=console_window)
+        dpg.configure_item(lastline,color=color)
+        dpg.set_y_scroll(console_window, dpg.get_y_scroll_max(console_window)+1000)
 
 def download():
     dpg.configure_item('dlbutton',enabled=False)
@@ -305,9 +305,9 @@ def download():
     with subprocess.Popen(resource_path('.\\exe\\yt-dlp.exe')+args,stdout=subprocess.PIPE,bufsize=1,universal_newlines=True,creationflags=subprocess.CREATE_NO_WINDOW) as process:
         for line in process.stdout:
             if len(line) > 1:
-                add_long_text(line)
+                print_console(line)
     dpg.configure_item('dlbutton',enabled=True)
-    add_long_text('All operations complete.',[0,255,0])
+    print_console('All operations complete.',[0,255,0])
 
 def pltog(sender):
     if dpg.get_value(sender) == True:
@@ -358,7 +358,7 @@ with dpg.window(tag="primary",width=700, height=600,no_move=True,no_resize=False
     with dpg.file_dialog(directory_selector=False,show=False,callback=fib_confirm2,tag='file_browser2',cancel_callback=fib_cancel,width=600,height=500,modal=True):
         dpg.add_file_extension('.txt')
     
-    mtext = dpg.add_text("Youtube-dl downloader",color=current_theme['text_color1'])
+    mtext = dpg.add_text("Youtube-dl GUI",color=current_theme['text_color1'])
     lastline = mtext#This is only here so add_long_text dosent error on its first run
     dpg.bind_item_font(mtext,big_font)
     themetext.append(mtext)
@@ -450,6 +450,7 @@ if is_4k_monitor == True:
     dpg.set_primary_window("primary", True)
 dpg.setup_dearpygui()
 dpg.show_viewport()
+toggletooltips() #this is easier than making every tooltip do its own check for weather it should be on
 
 while dpg.is_dearpygui_running():
     if is_4k_monitor == False:

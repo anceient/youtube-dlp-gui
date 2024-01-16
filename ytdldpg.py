@@ -5,8 +5,8 @@ import winreg as wirg
 import json
 import subprocess
 import threading
-
 import dearpygui.dearpygui as dpg
+import yt_dlp
 
 def resource_path(relative_path):
     if hasattr(sys, '_MEIPASS'):
@@ -37,13 +37,15 @@ for i in range(10):
         keys.append(x[0])
         #print(i)
     except:
-        if i == 0 or i < 3:
+        if i == 0 or i < 4:
             wirg.SetValueEx(key,'Default Theme',0,wirg.REG_SZ,'gold')
             wirg.SetValueEx(key,'Tooltips',0,wirg.REG_SZ,'True')
             wirg.SetValueEx(key,'dlpath',0,wirg.REG_SZ,'.\\')
+            wirg.SetValueEx(key,'addmediaid',0,wirg.REG_SZ,'True')
             keys.append('Default Theme')
             keys.append('Tooltips')
             keys.append('dlpath')
+            keys.append('addmediaid')
         break
 
 ##################################################################################################
@@ -259,14 +261,6 @@ def toggletooltips():
     for i in tips:
         dpg.configure_item(i,show=var)
 
-def modetog(sender):
-    if dpg.get_value(sender) == 'Full video':
-        dpg.configure_item('thumbnail',enabled=False)
-        dpg.set_value('format','mp4')
-    else:
-        dpg.configure_item('thumbnail',enabled=True)
-        dpg.set_value('format','mp3')
-
 global lastline
 
 def print_console(inp,console_window='conwin',color=[255,255,255]):
@@ -275,40 +269,97 @@ def print_console(inp,console_window='conwin',color=[255,255,255]):
         dpg.set_value(lastline,inp)
         dpg.configure_item(lastline,color=current_theme['text_color1'])
     else:
-        lastline = dpg.add_text(inp, parent=console_window)
+        lastline = dpg.add_text(inp, parent=console_window,wrap=dpg.get_item_width(console_window))
         dpg.configure_item(lastline,color=color)
         dpg.set_y_scroll(console_window, dpg.get_y_scroll_max(console_window)+1000)
 
+class logger:
+    def debug(self,msg):
+        if msg.startswith('[debug] '):
+            pass
+        elif not msg.startswith('[VideoRemuxer] Not remuxing '):
+            self.info(msg)
+        
+    def info(self,msg):
+        print_console(msg)
+    
+    def warning(self,msg):
+        print_console(msg,color=[255,255,0])
+    
+    def error(self,msg):
+        if 'Requested format is not available.' in msg:
+            print_console('[Error] is looks like this website might not seperate its audio from its video try switching to "Video only" mode.',color=[255,0,0])
+        else:
+            print_console(msg,color=[255,0,0])
+
+
+dl_options={ #well add more options like the download location/format as called
+    'logger': logger(),
+    'ffmpeg_location': resource_path('exe/'),
+    'color': 'no_color',
+    'ignoreerrors': True,
+    'windowsfilenames': True,
+    'restrictfilenames': True
+}
+
+def modetog(sender):
+    if dpg.get_value(sender) == 'Full video':
+        dpg.configure_item('thumbnail',enabled=False)
+        dpg.set_value('format','mp4')
+    elif dpg.get_value(sender) == 'Audio only':
+        dpg.configure_item('thumbnail',enabled=True)
+        dpg.set_value('format','mp3')
+    elif dpg.get_value(sender) == 'Video only':
+        dpg.configure_item('thumbnail',enabled=False)
+        dpg.set_value('format','mp4')
+
 def download():
+    global dl_options
     dpg.configure_item('dlbutton',enabled=False)
+    dl_options['ratelimit'] = float(dpg.get_value("ratelimit"))*1000000 
+    dl_options['outtmpl'] = f'{dpg.get_value("dllocation")}%(title)s{" [%(id)s]" if dpg.get_value("addmediaid") else ""}.%(ext)s'
+    if 'postprocessors' in dl_options: dl_options.pop('postprocessors')
+
+    if dpg.get_value('isplaylist') == True:
+        if dpg.get_value('plpoint2') == 0:
+            dl_options['playlist_items'] = f'{dpg.get_value("plpoint1")}:'
+        else:
+            dl_options['playlist_items'] = f'{dpg.get_value("plpoint1")}:{dpg.get_value("plpoint2")}'
+
+    if not dpg.get_value('cookies') == '':
+        dl_options['cookiefile'] = f'{dpg.get_value("cookies")}'#untested but i think this is maby correct?
+
     if dpg.get_value('modesel') == 'Full video':
-        args = f' -r{str(dpg.get_value("ratelimit"))}m -f bestvideo+bestaudio --merge-output-format {dpg.get_value("format")} -o "{dpg.get_value("dllocation")}%(title)s-%(id)s.%(ext)s" --ffmpeg-location "{resource_path("exe/ffmpeg.exe")}"'
-        if dpg.get_value('isplaylist') == True:
-            if dpg.get_value('plpoint2') == 0:
-                args += f' --playlist-items {dpg.get_value("plpoint1")}:'
-            else:
-                args += f' --playlist-items {dpg.get_value("plpoint1")}:{dpg.get_value("plpoint2")}'
-        if not dpg.get_value('cookies') == '':
-            args += f' --cookies {dpg.get_value("cookies")}'
-        args += f" {dpg.get_value('url')}"
-    else:
-        args = f' -r{str(dpg.get_value("ratelimit"))}m -x --audio-format {dpg.get_value("format")} -o "{dpg.get_value("dllocation")}%(title)s-%(id)s.%(ext)s" --ffmpeg-location "{resource_path("exe/ffmpeg.exe")}"'
+        dl_options['format'] = 'bestvideo+bestaudio'
+        dl_options['merge_output_format'] = dpg.get_value("format")
+
+    elif dpg.get_value('modesel') == 'Audio only':
+        dl_options['format'] = 'bestaudio/best'
+        postproc = [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': dpg.get_value("format"),
+            'preferredquality': 192
+        }]
         if dpg.get_value('thumbnail') == True:
-            args += f' --embed-thumbnail'
-        if dpg.get_value('isplaylist') == True:
-            if dpg.get_value('plpoint2') == 0:
-                args += f' --playlist-items {dpg.get_value("plpoint1")}:'
-            else:
-                args += f' --playlist-items {dpg.get_value("plpoint1")}:{dpg.get_value("plpoint2")}'
-        args += f' {dpg.get_value("url")}'
+            dl_options['writethumbnail'] = True
+            postproc.append({'key': 'FFmpegMetadata','add_metadata': True})
+            postproc.append({'key': 'EmbedThumbnail','already_have_thumbnail': False})
 
-    with subprocess.Popen(resource_path('.\\exe\\yt-dlp.exe')+args,stdout=subprocess.PIPE,bufsize=1,universal_newlines=True,creationflags=subprocess.CREATE_NO_WINDOW) as process:
-        for line in process.stdout:
-            if len(line) > 1:
-                print_console(line)
+        dl_options['postprocessors'] = postproc
+    
+    elif dpg.get_value('modesel') == 'Video only':
+        dl_options['format'] = 'bestvideo/best'
+        dl_options['postprocessors'] = [{
+            'key': 'FFmpegVideoRemuxer',
+            'preferedformat': dpg.get_value('format')
+        }]
+
+    with yt_dlp.YoutubeDL(dl_options) as yt:
+        yt.download(url_list=dpg.get_value('url'))
+
     dpg.configure_item('dlbutton',enabled=True)
-    print_console('All operations complete.',[0,255,0])
-
+    print_console('All operations complete.',color=[0,255,0])
+#print(help(yt_dlp.postprocessor.FFmpegVideoConvertorPP))
 def pltog(sender):
     if dpg.get_value(sender) == True:
         dpg.configure_item('plpoint1',enabled=True)
@@ -359,11 +410,11 @@ with dpg.window(tag="primary",width=700, height=600,no_move=True,no_resize=False
         dpg.add_file_extension('.txt')
     
     mtext = dpg.add_text("Youtube-dl GUI",color=current_theme['text_color1'])
-    lastline = mtext#This is only here so add_long_text dosent error on its first run
+    lastline = mtext#This is only here so print_console dosent error on its first run
     dpg.bind_item_font(mtext,big_font)
     themetext.append(mtext)
 
-    dpg.add_radio_button(['Full video','Audio only'],tag='modesel',callback=modetog,default_value='Full video')
+    dpg.add_radio_button(['Full video','Video only','Audio only'],tag='modesel',callback=modetog,default_value='Full video')
 
     dpg.add_input_int(label='Rate limit in MB',tag='ratelimit',default_value=35,width=100)
     dpg.add_input_text(label='Output format',tag='format',default_value='mp4',width=50,callback=wavEMBEDblock)
@@ -410,7 +461,12 @@ with dpg.window(tag="primary",width=700, height=600,no_move=True,no_resize=False
         dpg.add_text('leave at 0 if you want to download all videos\nFrom the starting point untill the end')
     
     dpg.add_separator()
-    dpg.add_button(label='Download',tag='dlbutton',callback=lambda: threading.Thread(target=download).start())
+    with dpg.group(horizontal=True):
+        dpg.add_button(label='Download',tag='dlbutton',callback=lambda: threading.Thread(target=download).start())
+        dpg.add_checkbox(label='Add media id to filename?',tag='addmediaid',default_value=True if wirg.QueryValueEx(key,keys[3])[0] == 'True' else False,callback=lambda s,a:wirg.SetValueEx(key,keys[3],0,wirg.REG_SZ,str(a)))
+        with dpg.tooltip('addmediaid') as mediaidtip:
+            tips.append(mediaidtip)
+            dpg.add_text('normally the output would look like (mediatitle [mediaID].mp4)\nBut this can sometimes cause problems with the video only mode\nIf an error is thrown saying so such file or directory try turning this off.')
     dpg.add_separator()
     dpg.add_text('Console',tag='consoleheader')
     dpg.bind_item_font('consoleheader',big_font)

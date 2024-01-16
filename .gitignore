@@ -160,3 +160,5 @@ cython_debug/
 #.idea/
 exe/ffmpeg.exe
 randomtesting.py
+ytdlptest.py
+exe/ffprobe.exe

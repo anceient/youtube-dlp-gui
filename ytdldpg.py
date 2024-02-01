@@ -273,35 +273,6 @@ def print_console(inp,console_window='conwin',color=[255,255,255]):
         dpg.configure_item(lastline,color=color)
         dpg.set_y_scroll(console_window, dpg.get_y_scroll_max(console_window)+1000)
 
-class logger:
-    def debug(self,msg):
-        if msg.startswith('[debug] '):
-            pass
-        elif not msg.startswith('[VideoRemuxer] Not remuxing '):
-            self.info(msg)
-        
-    def info(self,msg):
-        print_console(msg)
-    
-    def warning(self,msg):
-        print_console(msg,color=[255,255,0])
-    
-    def error(self,msg):
-        if 'Requested format is not available.' in msg:
-            print_console('[Error] is looks like this website might not seperate its audio from its video try switching to "Video only" mode.',color=[255,0,0])
-        else:
-            print_console(msg,color=[255,0,0])
-
-
-dl_options={ #well add more options like the download location/format as called
-    'logger': logger(),
-    'ffmpeg_location': resource_path('exe/'),
-    'color': 'no_color',
-    'ignoreerrors': True,
-    'windowsfilenames': True,
-    'restrictfilenames': True
-}
-
 def modetog(sender):
     if dpg.get_value(sender) == 'Full video':
         dpg.configure_item('thumbnail',enabled=False)
@@ -314,52 +285,51 @@ def modetog(sender):
         dpg.set_value('format','mp4')
 
 def download():
-    global dl_options
-    dpg.configure_item('dlbutton',enabled=False)
-    dl_options['ratelimit'] = float(dpg.get_value("ratelimit"))*1000000 
-    dl_options['outtmpl'] = f'{dpg.get_value("dllocation")}%(title)s{" [%(id)s]" if dpg.get_value("addmediaid") else ""}.%(ext)s'
-    if 'postprocessors' in dl_options: dl_options.pop('postprocessors')
+    dpg.configure_item('dlbutton',enabled=False) #disable download button while download is in progress
 
-    if dpg.get_value('isplaylist') == True:
+    dl_options=[ #redefine options list for new download and grab user settings like rate limit
+        f' --ffmpeg-location "{resource_path("exe/")}" ',
+        f'-r {dpg.get_value("ratelimit")}m ',
+        f'-o "{dpg.get_value("dllocation")}%(title)s{" [%(id)s]" if dpg.get_value("addmediaid") else ""}.%(ext)s" ',
+        '--windows-filenames ',
+        '--restrict-filenames '
+    ]
+
+
+    if dpg.get_value('isplaylist') == True: #set start/endpoint for playlist if defined by user
         if dpg.get_value('plpoint2') == 0:
-            dl_options['playlist_items'] = f'{dpg.get_value("plpoint1")}:'
+            dl_options.append(f'--playlist-items {dpg.get_value("plpoint1")}: ')
         else:
-            dl_options['playlist_items'] = f'{dpg.get_value("plpoint1")}:{dpg.get_value("plpoint2")}'
+            dl_options.append(f'--playlist-items {dpg.get_value("plpoint1")}:{dpg.get_value("plpoint2")} ')
 
-    if not dpg.get_value('cookies') == '':
-        dl_options['cookiefile'] = f'{dpg.get_value("cookies")}'#untested but i think this is maby correct?
+    if not dpg.get_value('cookies') == '': #add cookies file if provided
+        dl_options.append(f'--cookies "{dpg.get_value("cookies")}" ')
 
-    if dpg.get_value('modesel') == 'Full video':
-        dl_options['format'] = 'bestvideo+bestaudio'
-        dl_options['merge_output_format'] = dpg.get_value("format")
+    if dpg.get_value('modesel') == 'Full video': #download video+audio
+        dl_options.append(f'-f bestvideo+bestaudio --merge-output-format {dpg.get_value("format")} ')
 
-    elif dpg.get_value('modesel') == 'Audio only':
-        dl_options['format'] = 'bestaudio/best'
-        postproc = [{
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': dpg.get_value("format"),
-            'preferredquality': 192
-        }]
+    elif dpg.get_value('modesel') == 'Audio only': #only download audio file
+        dl_options.append(f'-x --audio-format {dpg.get_value("format")} ')
+
         if dpg.get_value('thumbnail') == True:
-            dl_options['writethumbnail'] = True
-            postproc.append({'key': 'FFmpegMetadata','add_metadata': True})
-            postproc.append({'key': 'EmbedThumbnail','already_have_thumbnail': False})
-
-        dl_options['postprocessors'] = postproc
+            dl_options.append('--embed-thumbnail ')
     
-    elif dpg.get_value('modesel') == 'Video only':
-        dl_options['format'] = 'bestvideo/best'
-        dl_options['postprocessors'] = [{
-            'key': 'FFmpegVideoRemuxer',
-            'preferedformat': dpg.get_value('format')
-        }]
-
-    with yt_dlp.YoutubeDL(dl_options) as yt:
-        yt.download(url_list=dpg.get_value('url'))
-
-    dpg.configure_item('dlbutton',enabled=True)
+    elif dpg.get_value('modesel') == 'Video only': #only download video file
+        dl_options.append(f'-f bestvideo/best --remux-video {dpg.get_value("format")} ')
+    dl_options.append(dpg.get_value('url'))
+    with subprocess.Popen(resource_path('exe\\yt-dlp.exe')+''.join(dl_options),stdout=subprocess.PIPE,stderr=subprocess.PIPE,bufsize=1,universal_newlines=True,creationflags=subprocess.CREATE_NO_WINDOW) as process:
+        for line in process.stdout:
+            if len(line) > 1:
+                print_console(line)
+        for line in process.stderr:
+            if len(line) > 1:
+                if 'Requested format is not available.' in line:
+                    print_console('[Error] is looks like this website might not seperate its audio from its video try switching to "Video only" mode.',color=[255,0,0])
+                else:
+                    print_console(line,color=[255,0,0])
+    dpg.configure_item('dlbutton',enabled=True)#reenable download button
     print_console('All operations complete.',color=[0,255,0])
-#print(help(yt_dlp.postprocessor.FFmpegVideoConvertorPP))
+
 def pltog(sender):
     if dpg.get_value(sender) == True:
         dpg.configure_item('plpoint1',enabled=True)

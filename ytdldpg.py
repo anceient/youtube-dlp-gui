@@ -3,7 +3,6 @@ import os
 import ctypes
 import winreg as wirg
 import json
-import subprocess
 import threading
 import dearpygui.dearpygui as dpg
 import yt_dlp
@@ -12,6 +11,11 @@ def resource_path(relative_path):
     if hasattr(sys, '_MEIPASS'):
         return os.path.join(sys._MEIPASS, relative_path)
     return os.path.join(os.path.abspath("."), relative_path)
+
+
+#setting this to True makes it so --ffmpeg location is not used later on
+#if your going to build with this set to True then you need to remove the --add-data "exe/*.exe;exe" from the build.bat file
+no_ffmpeg = False
 
 ##################################################################################################
 #=============================================Winreg=============================================#
@@ -295,12 +299,14 @@ class logger:
 
 dl_options={ #well add more options like the download location/format as called
     'logger': logger(),
-    'ffmpeg_location': resource_path('exe/'),
     'color': 'no_color',
     'ignoreerrors': True,
     'windowsfilenames': True,
     'restrictfilenames': True
 }
+
+if no_ffmpeg == False:
+    dl_options['ffmpeg_location'] = resource_path('exe/')
 
 def modetog(sender):
     if dpg.get_value(sender) == 'Full video':

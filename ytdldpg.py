@@ -6,12 +6,16 @@ import json
 import subprocess
 import threading
 import dearpygui.dearpygui as dpg
-import yt_dlp
+
 
 def resource_path(relative_path):
     if hasattr(sys, '_MEIPASS'):
         return os.path.join(sys._MEIPASS, relative_path)
     return os.path.join(os.path.abspath("."), relative_path)
+
+#setting this to True makes it so --ffmpeg location is not used later on
+#if your going to build with this set to True then you should remove the ffmpeg/ffprobe exes from the exe folder
+no_ffmpeg = False
 
 ##################################################################################################
 #=============================================Winreg=============================================#
@@ -288,12 +292,17 @@ def download():
     dpg.configure_item('dlbutton',enabled=False) #disable download button while download is in progress
 
     dl_options=[ #redefine options list for new download and grab user settings like rate limit
-        f' --ffmpeg-location "{resource_path("exe/")}" ',
+        ' --update ',
         f'-r {dpg.get_value("ratelimit")}m ',
         f'-o "{dpg.get_value("dllocation")}%(title)s{" [%(id)s]" if dpg.get_value("addmediaid") else ""}.%(ext)s" ',
         '--windows-filenames ',
         '--restrict-filenames '
     ]
+
+    global no_ffmpeg
+    if no_ffmpeg == False:
+        dl_options.append(f'--ffmpeg-location "{resource_path("exe/")}" ')
+
 
 
     if dpg.get_value('isplaylist') == True: #set start/endpoint for playlist if defined by user
@@ -471,7 +480,7 @@ with dpg.window(tag="primary",width=700, height=600,no_move=True,no_resize=False
 #lets say you do test=5
 #but you want it to = 10 while test2 = True
 #you can just do test = 5 if test2 == False else 10
-dpg.create_viewport(title='Youtube-dlp gui', decorated=False if not is_4k_monitor else True,large_icon=resource_path('icon/icon.ico'))
+dpg.create_viewport(title='Youtube-dlp gui', decorated=False if not is_4k_monitor else True)
 if is_4k_monitor == True:
     dpg.set_primary_window("primary", True)
 dpg.setup_dearpygui()

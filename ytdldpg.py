@@ -99,6 +99,12 @@ def localfilegen(sender,app_data,user_data):
 #=====================================Theme functions/Defs=======================================#
 ##################################################################################################
 
+try: #In the event the registry is set to an invalid theme. Default it to red rather than crash
+    current_theme = theming[wirg.QueryValueEx(key,keys[0])[0]]
+except:
+    current_theme = theming['red']
+    wirg.SetValueEx(key,'Default Theme',0,wirg.REG_SZ,'red')
+
 current_theme = theming[wirg.QueryValueEx(key,keys[0])[0]]
 def set_theme():
     with dpg.theme() as global_theme:

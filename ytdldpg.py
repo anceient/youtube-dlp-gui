@@ -464,7 +464,7 @@ with dpg.window(tag="primary",width=700, height=600,no_move=True,no_resize=False
     dpg.add_checkbox(label='Custom playlist entry/exit point?',tag='cutomPlaylistPoints',callback=pltog)
     with dpg.tooltip('cutomPlaylistPoints') as playlisttip:
         tips.append(playlisttip)
-        dpg.add_text('Enable this to define a custom start/stop for your playlist\nother wise it will just go from 1 to end')
+        dpg.add_text('Enable this to define a custom start/stop\nfor your playlist other wise it will just\ngo from 1 to the end of the playlist')
     dpg.add_input_int(label='Starting point for the playlist',min_value=1,default_value=1,tag='plpoint1',enabled=False,width=100)
     dpg.add_input_int(label='Ending point for the playlist',min_value=0,default_value=0,tag='plpoint2',enabled=False,width=100)
     with dpg.tooltip('plpoint2') as plpoint2tip:

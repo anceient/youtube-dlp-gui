@@ -331,7 +331,7 @@ def download():
     dl_options['outtmpl'] = f'{dpg.get_value("dllocation")}%(title)s{" [%(id)s]" if dpg.get_value("addmediaid") else ""}.%(ext)s'
     if 'postprocessors' in dl_options: dl_options.pop('postprocessors')
 
-    if dpg.get_value('isplaylist') == True:
+    if dpg.get_value('cutomPlaylistPoints') == True:
         if dpg.get_value('plpoint2') == 0:
             dl_options['playlist_items'] = f'{dpg.get_value("plpoint1")}:'
         else:
@@ -461,10 +461,10 @@ with dpg.window(tag="primary",width=700, height=600,no_move=True,no_resize=False
         tips.append(thumbnailtip)
         dpg.add_text('Audio only when enabled the thumbnail will be downloaded\nand the icon of the audio file will be set to that.\nNote this can occasionally hang for a few seconds at the end.')
     
-    dpg.add_checkbox(label='Playlist?',tag='isplaylist',callback=pltog)
-    with dpg.tooltip('isplaylist') as playlisttip:
+    dpg.add_checkbox(label='Custom playlist entry/exit point?',tag='cutomPlaylistPoints',callback=pltog)
+    with dpg.tooltip('cutomPlaylistPoints') as playlisttip:
         tips.append(playlisttip)
-        dpg.add_text('You only need to enable this if you want to\ndefine a custom start/stop for your playlist\nother wise it will just go from 1 to end')
+        dpg.add_text('Enable this to define a custom start/stop for your playlist\nother wise it will just go from 1 to end')
     dpg.add_input_int(label='Starting point for the playlist',min_value=1,default_value=1,tag='plpoint1',enabled=False,width=100)
     dpg.add_input_int(label='Ending point for the playlist',min_value=0,default_value=0,tag='plpoint2',enabled=False,width=100)
     with dpg.tooltip('plpoint2') as plpoint2tip:

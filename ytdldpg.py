@@ -41,15 +41,17 @@ for i in range(10):
         keys.append(x[0])
         #print(i)
     except:
-        if i == 0 or i < 4:
+        if i == 0 or i < 5:
             wirg.SetValueEx(key,'Default Theme',0,wirg.REG_SZ,'gold')
             wirg.SetValueEx(key,'Tooltips',0,wirg.REG_SZ,'True')
             wirg.SetValueEx(key,'dlpath',0,wirg.REG_SZ,'.\\')
             wirg.SetValueEx(key,'addmediaid',0,wirg.REG_SZ,'True')
+            wirg.SetValueEx(key,'force_decorator',0,wirg.REG_DWORD, 0)
             keys.append('Default Theme')
             keys.append('Tooltips')
             keys.append('dlpath')
             keys.append('addmediaid')
+            keys.append('force_decorator')
         break
 
 ##################################################################################################
@@ -64,7 +66,7 @@ is_4k_monitor = False #This varabial only exists because when windows scales up 
 #2149 1234 huh?k
 user32 = ctypes.windll.user32
 screensize = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
-if screensize == (2194 ,1234) or screensize == (3840,2160):
+if screensize == (2194 ,1234) or screensize == (3840,2160) or wirg.QueryValueEx(key,keys[4])[0] == 1:
     is_4k_monitor = True
 
 dpg.create_context()
@@ -496,9 +498,17 @@ with dpg.window(tag="primary",width=700, height=600,no_move=True,no_resize=False
             o1 = dpg.add_menu_item(label="create themes.json file",callback=localfilegen,user_data=['./themes.json',theme])
             with dpg.tooltip(o1) as themetip:
                 tips.append(themetip)
-                dpg.add_text('Generate a jsonfile next to the exe for user modification\nThis json file will be used on startup\nInsted of the default file')
+                dpg.add_text('Generate a jsonfile next to the exe for user modification\nThis json file will be used on startup\nInsted of the default file') #wirg.QueryValueEx(key,keys[4])[0]
 
             dpg.add_checkbox(label="Enable tooltips",default_value=True if wirg.QueryValueEx(key,keys[1])[0] == 'True' else False,tag='enabletipcb',callback=toggletooltips)
+
+            dpg.add_checkbox(label="Force Decorator Bar",default_value=True if wirg.QueryValueEx(key,keys[4])[0] == 1 else False,tag='forcedecocb',callback=lambda _, var, __: wirg.SetValueEx(key,keys[4],0,wirg.REG_DWORD, int(var)) )
+            #the aboce checkbox checks the registry for if the decorator bar is forced or not and the callback just sets the registry to 1 or 0 depending on the checkbox
+            with dpg.tooltip(dpg.last_item()) as fdtip:
+                tips.append(fdtip)
+                dpg.add_text('If the cusotom titlebar is bugging out then try enabling this\nIt forces the window to use the normal windows titlebar.\n*Requires restart*')
+            
+
         if is_4k_monitor == False:
             dpg.add_button(label='X',tag='closebtn',callback=lambda: os._exit(0))
             dpg.add_button(label='-',tag='minbtn',callback=lambda: dpg.minimize_viewport())
